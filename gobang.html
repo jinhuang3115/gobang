@@ -5,11 +5,12 @@
     <title>javaScript列表</title>
     <meta id="meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
     <style>
-        *{
+        * {
             padding: 0;
             margin: 0;
         }
-        .chessboard{
+
+        .chessboard {
             height: 500px;
             width: 500px;
             border: 1px black solid;
@@ -17,24 +18,29 @@
             position: relative;
             margin-top: 50px;
         }
-        .row{
+
+        .row {
             list-style-type: none;
             border-bottom: 1px red solid;
             height: 49px;
         }
-        .chessbox{
+
+        .chessbox {
             height: 100%;
         }
-        .cell{
+
+        .cell {
             width: 49px;
             border-right: 1px red solid;
             float: left;
             height: 49px;
         }
-        .cell:last-of-type{
+
+        .cell:last-of-type {
             border-right: none;
         }
-        .row:last-of-type{
+
+        .row:last-of-type {
             border-bottom: none;
         }
     </style>
@@ -45,55 +51,71 @@
 </div>
 </body>
 <script>
-    var chessboard = document.querySelector("#chessboard");
-    var boardHeight = 500;
-    var boardWidth = 500;
-    var offsetLeft = chessboard.offsetLeft;
-    var offsetTop = chessboard.offsetTop;
-    var chessStyle = {
+    const chessboard = document.querySelector("#chessboard");
+    const boardHeight = 500;
+    const boardWidth = 500;
+    const offsetLeft = chessboard.offsetLeft;
+    const offsetTop = chessboard.offsetTop;
+    const boardAx = createBoardAx();
+    const chessStyle = {
         height: "30px",
         width: "30px",
         'border-radius': '15px',
         'background-color': 'black',
         'position': 'absolute'
     };
-    var obj = {
+    let obj = {
         x: [],
         y: []
     };
+
+    function createBoardAx() {
+        let arr = [];
+        for(let i = 0, len = boardWidth / 50; i <= len; i++){
+            arr.push([]);
+            for(let j = 0, jlen = boardWidth / 50; j <= jlen; j++){
+                arr[i].push(0);
+            }
+        }
+        return arr;
+    }
+
+
     function drawBoard() {
-        var rowCount = boardHeight / 50;
-        var _ul = "<ul class='chessbox'>";
-        for(var i = 0; i < rowCount; i++){
-            _ul += '<li class="row">' + drawCell() + '</li>';
+        let rowCount = boardHeight / 50;
+        let _ul = "<ul class='chessbox'>";
+        for (let i = 0; i < rowCount; i++) {
+            _ul += '<li class="row">' + drawCell(boardAx[i]) + '</li>';
         }
         _ul += '</ul>';
         chessboard.innerHTML = _ul;
     }
 
-    function drawCell() {
-        var _html = "";
-        var cellCount = boardWidth / 50;
-        for (var i = 0; i < cellCount; i++){
+    function drawCell(arr) {
+        let _html = "";
+        let cellCount = boardWidth / 50;
+        for (let i = 0; i < cellCount; i++) {
             _html += "<div class='cell'></div>";
         }
         return _html;
     }
 
     function drawChess(x, y) {
-        var chess = document.createElement('div');
-        for(var key in chessStyle){
+        let chess = document.createElement('div');
+        for (let key in chessStyle) {
             chess.style[key] = chessStyle[key];
         }
-        var xCount = Math.round(x / 50);
-        var yCount = Math.round(y / 50);
-        if (obj.x.indexOf(xCount) > -1 && obj.y.indexOf(yCount) > -1){
+        let xCount = Math.round(x / 50);
+        let yCount = Math.round(y / 50);
+
+        if (boardAx[yCount][xCount]) {
             return;
         }
+        boardAx[yCount][xCount] = 1;
         obj.x.push(xCount);
         obj.y.push(yCount);
-        var left = 50 * xCount - parseInt(chessStyle.width, 10) / 2;
-        var top = 50 * yCount - parseInt(chessStyle.height, 10) / 2;
+        let left = 50 * xCount - parseInt(chessStyle.width, 10) / 2;
+        let top = 50 * yCount - parseInt(chessStyle.height, 10) / 2;
         chess.style.top = top + "px";
         chess.style.left = left + "px";
         chessboard.appendChild(chess);
@@ -104,13 +126,30 @@
     }
 
     function isWin(o) {
+        let xLine = boardAx[o.y];
+        let yLine = boardAx.map(function(arr){
+            return arr[o.x];
+        });
+        let leftLine = [];
+        let rightLine = [];
+        boardAx.map(function (arr, index) {
+            let leftItem = arr[o.x - (o.y - index)];
+            let rightItem = arr[o.x + (o.y - index)]
+            if (typeof leftItem !== 'undefined'){
+                leftLine.push(leftItem);
+            }
+            if (typeof rightItem !== 'undefined'){
+                rightLine.push(rightItem)
+            }
 
 
+        });
+        console.log(rightLine)
     }
 
     chessboard.addEventListener('click', function (e) {
-        var x = e.clientX;
-        var y = e.clientY;
+        let x = e.clientX;
+        let y = e.clientY;
         drawChess(x - offsetLeft, y - offsetTop);
     }, false);
 
