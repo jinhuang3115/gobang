@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>javaScript列表</title>
+    <meta id="meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+    <style>
+        *{
+            padding: 0;
+            margin: 0;
+        }
+        .chessboard{
+            height: 500px;
+            width: 500px;
+            border: 1px black solid;
+            margin: 0 auto;
+            position: relative;
+            margin-top: 50px;
+        }
+        .row{
+            list-style-type: none;
+            border-bottom: 1px red solid;
+            height: 49px;
+        }
+        .chessbox{
+            height: 100%;
+        }
+        .cell{
+            width: 49px;
+            border-right: 1px red solid;
+            float: left;
+            height: 49px;
+        }
+        .cell:last-of-type{
+            border-right: none;
+        }
+        .row:last-of-type{
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+<div class="outer">
+    <div class="chessboard" id="chessboard"></div>
+</div>
+</body>
+<script>
+    var chessboard = document.querySelector("#chessboard");
+    var boardHeight = 500;
+    var boardWidth = 500;
+    var offsetLeft = chessboard.offsetLeft;
+    var offsetTop = chessboard.offsetTop;
+    var chessStyle = {
+        height: "30px",
+        width: "30px",
+        'border-radius': '15px',
+        'background-color': 'black',
+        'position': 'absolute'
+    };
+    var obj = {
+        x: [],
+        y: []
+    };
+    function drawBoard() {
+        var rowCount = boardHeight / 50;
+        var _ul = "<ul class='chessbox'>";
+        for(var i = 0; i < rowCount; i++){
+            _ul += '<li class="row">' + drawCell() + '</li>';
+        }
+        _ul += '</ul>';
+        chessboard.innerHTML = _ul;
+    }
+
+    function drawCell() {
+        var _html = "";
+        var cellCount = boardWidth / 50;
+        for (var i = 0; i < cellCount; i++){
+            _html += "<div class='cell'></div>";
+        }
+        return _html;
+    }
+
+    function drawChess(x, y) {
+        var chess = document.createElement('div');
+        for(var key in chessStyle){
+            chess.style[key] = chessStyle[key];
+        }
+        var xCount = Math.round(x / 50);
+        var yCount = Math.round(y / 50);
+        if (obj.x.indexOf(xCount) > -1 && obj.y.indexOf(yCount) > -1){
+            return;
+        }
+        obj.x.push(xCount);
+        obj.y.push(yCount);
+        var left = 50 * xCount - parseInt(chessStyle.width, 10) / 2;
+        var top = 50 * yCount - parseInt(chessStyle.height, 10) / 2;
+        chess.style.top = top + "px";
+        chess.style.left = left + "px";
+        chessboard.appendChild(chess);
+        isWin({
+            x: xCount,
+            y: yCount
+        });
+    }
+
+    function isWin(o) {
+
+
+    }
+
+    chessboard.addEventListener('click', function (e) {
+        var x = e.clientX;
+        var y = e.clientY;
+        drawChess(x - offsetLeft, y - offsetTop);
+    }, false);
+
+    drawBoard();
+</script>
+</html>
