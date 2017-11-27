@@ -22,7 +22,7 @@
 
         .row {
             list-style-type: none;
-            border-bottom: 1px red solid;
+            border-bottom: 1px black solid;
             height: 49px;
         }
 
@@ -32,7 +32,7 @@
 
         .cell {
             width: 49px;
-            border-right: 1px red solid;
+            border-right: 1px black solid;
             float: left;
             height: 49px;
         }
@@ -45,12 +45,25 @@
             border-bottom: none;
         }
 
+        .btn-region {
+            display: block;
+            height: 100px;
+        }
+
         .retract-btn {
             display: none;
         }
 
         .unretract-btn {
             display: none;
+        }
+
+        .switch-dom {
+            display: none;
+        }
+
+        .switch-canvas {
+
         }
     </style>
 </head>
@@ -60,6 +73,10 @@
     <div class="btn-region">
         <a href="javascript:;" class="retract-btn" id="retract-btn">悔棋</a>
         <a href="javascript:;" class="unretract-btn" id="unretract-btn">撤销悔棋</a>
+    </div>
+    <div class="btn-region">
+        <a href="javascript:;" class="switch-canvas" id="switch-canvas">Canvas版</a>
+        <a href="javascript:;" class="switch-dom" id="switch-dom">DOM版</a>
     </div>
 </div>
 </body>
@@ -113,7 +130,7 @@
         return Object.assign({}, history, obj);
     }
 
-    function drawChessHtml(styles, xCount, yCount, player){
+    function drawChessHtml(styles, xCount, yCount, player) {
         let chess = document.createElement('div');
         let color = {
             "background-color": player === 1 ? "black" : "white"
@@ -168,7 +185,7 @@
         return role === 2 ? 1 : 2;
     }
 
-    class GobangDom {
+    class Base {
         constructor() {
             this.chessboard = document.querySelector("#chessboard");
             this.retractBtn = document.querySelector("#retract-btn");
@@ -177,6 +194,144 @@
             this.boardWidth = 500;
             this.offsetLeft = this.chessboard.offsetLeft;
             this.offsetTop = this.chessboard.offsetTop;
+            this.currentStep = 0;
+            this.retractHistory = [];
+            this.type = '';
+        }
+
+        setStep(xCount, yCount) {
+            this.boardAx[yCount][xCount] = this.player;
+            this.currentStep++;
+            this.toggleRetract(this.currentStep);
+            this.history = setHistory(this.history, this.currentStep, this.player, xCount, yCount, this.boardAx);
+            setTimeout(() => {
+                this.isWin({
+                    x: xCount,
+                    y: yCount
+                });
+            }, 100);
+        }
+
+        toggleRetract(step) {
+            let type = !step ? "none" : "block";
+            this.retractBtn.style.display = type;
+        }
+
+        isWin(o) {
+            let succCount = checkWin(o, this.boardAx);
+            this.playing = false;
+            if (succCount) {
+                alert("恭喜" + (this.player === 2 ? "白方" : "黑方") + "获胜");
+                this.resetBoard();
+                return;
+            }
+            this.player = setPlayer(this.player);
+        }
+
+        toggleunretract() {
+            let type = !this.retractHistory.length ? "none" : "block";
+            this.unretractBtn.style.display = type;
+        }
+
+        bindEvent() {
+            this.chessboard.addEventListener('click', this.clickFun.bind(this), false);
+            this.unretractBtn.addEventListener('click', this.unretract.bind(this), false);
+
+            this.retractBtn.addEventListener('click', this.retract.bind(this), false);
+        }
+
+        clickFun(e) {
+            let x = e.clientX;
+            let y = e.clientY;
+            let xCount = Math.round((x - this.offsetLeft) / 50);
+            let yCount = Math.round((y - this.offsetTop) / 50);
+            if (!this.playing) {
+                this.playing = true;
+                if (this.type === 'canvas') {
+                    this.drawChess(this.context, xCount, yCount, this.player, this.boardAx, true);
+                } else {
+                    this.drawChess(xCount, yCount, this.player, true);
+                }
+
+            }
+        }
+
+        unretract() {
+            let hisStep = 0;
+            let nextData = {};
+            if (!this.retractHistory.length) {
+                return;
+            }
+
+            hisStep = this.retractHistory.splice(this.retractHistory.length - 1, 1);
+            nextData = this.history[hisStep[0]];
+            this.boardAx = [];
+            if (this.type === 'canvas') {
+                this.context.clearRect(0, 0, this.boardWidth, this.boardHeight);
+                this.drawBoard(this.context, this.boardWidth / 50, this.boardHeight / 50);
+                this.boardAx = nextData.ax.map((arr, inx) => {
+                    arr.forEach((item, index) => {
+                        if (item !== 0) {
+                            this.drawChess(this.context, index, inx, item, nextData.ax);
+                        }
+                    });
+                    return arr.slice();
+                });
+            } else {
+                this.boardAx = nextData.ax.map((arr, inx) => {
+                    return arr.slice();
+                });
+                this.drawChess(nextData.x, nextData.y, nextData.player);
+            }
+
+            this.currentStep = hisStep;
+            this.player = setPlayer(nextData.player);
+            this.toggleunretract();
+        }
+
+        retract() {
+            let lastData = {};
+            let currentData = {};
+            let target = null;
+            if (!this.currentStep) {
+                return;
+            }
+            this.retractHistory.push(this.currentStep);
+            currentData = this.history[this.currentStep];
+            this.currentStep--;
+            lastData = this.history[this.currentStep];
+            this.boardAx = [];
+            if (this.type === 'canvas') {
+                this.context.clearRect(0, 0, this.boardWidth, this.boardHeight);
+                this.drawBoard(this.context, this.boardWidth / 50, this.boardHeight / 50);
+                this.boardAx = lastData.ax.map((arr, inx) => {
+                    arr.forEach((item, index) => {
+                        if (item !== 0) {
+                            this.drawChess(this.context, index, inx, item, lastData.ax);
+                        }
+                    });
+                    return arr.slice();
+                });
+            } else {
+                this.boardAx = lastData.ax.map((arr) => {
+                    return arr.slice();
+                });
+                target = document.querySelector("#item" + currentData.player + currentData.x + currentData.y);
+                target.parentNode.removeChild(target);
+            }
+            this.player = setPlayer(this.player);
+            this.toggleunretract();
+        }
+
+        destory() {
+            this.chessboard.innerHTML = "";
+        }
+    }
+
+    class GobangDom extends Base {
+        constructor() {
+            super();
+            this.type = 'dom';
             this.chessStyle = {
                 height: "30px",
                 width: "30px",
@@ -184,66 +339,12 @@
                 'position': 'absolute'
             };
             this.boardAx = null;
-            this.currentStep = 0;
-            this.retractHistory = [];
             this.init();
         }
 
-        init(){
+        init() {
             this.resetBoard();
             this.bindEvent();
-        }
-
-        bindEvent() {
-            this.unretractBtn.addEventListener('click', (e) => {
-                let hisStep = 0;
-                let nextData = {};
-                if (!this.retractHistory.length) {
-                    return;
-                }
-                hisStep = this.retractHistory.splice(this.retractHistory.length - 1, 1);
-                nextData = this.history[hisStep[0]];
-                this.boardAx = [];
-                this.boardAx = nextData.ax.map(function (arr) {
-                    return arr.slice();
-                });
-                this.drawChess(nextData.x, nextData.y, nextData.player);
-                this.currentStep = hisStep;
-                this.player = setPlayer(nextData.player);
-                this.toggleunretract();
-            });
-
-            this.retractBtn.addEventListener('click', (e) => {
-                let lastData = {};
-                let currentData = {};
-                let target = null;
-                if (!this.currentStep) {
-                    return;
-                }
-                this.retractHistory.push(this.currentStep);
-                currentData = this.history[this.currentStep];
-                this.currentStep--;
-                lastData = this.history[this.currentStep];
-                this.boardAx = [];
-                this.boardAx = lastData.ax.map(function (arr) {
-                    return arr.slice();
-                });
-                target = document.querySelector("#item" + currentData.player + currentData.x + currentData.y);
-                target.parentNode.removeChild(target);
-                this.player = setPlayer(this.player);
-                this.toggleunretract();
-            }, false);
-
-            this.chessboard.addEventListener('click', (e) => {
-                let x = e.clientX;
-                let y = e.clientY;
-                let xCount = Math.round((x - this.offsetLeft) / 50);
-                let yCount = Math.round((y - this.offsetTop) / 50);
-                if (!this.playing) {
-                    this.playing = true;
-                    this.drawChess(xCount, yCount, this.player, true);
-                }
-            }, false);
         }
 
         setStep(xCount, yCount) {
@@ -267,28 +368,6 @@
             if (his) {
                 this.setStep(xCount, yCount);
             }
-
-        }
-
-        isWin(o) {
-            let succCount = checkWin(o, this.boardAx);
-            this.playing = false;
-            if (succCount) {
-                alert("恭喜" + this.player === 2 ? "白方" : "黑方" + "获胜");
-                this.resetBoard();
-                return;
-            }
-            this.player = setPlayer(this.player);
-        }
-
-        toggleRetract(step) {
-            let type = !step ? "none" : "block";
-            this.retractBtn.style.display = type;
-        }
-
-        toggleunretract() {
-            let type = !this.retractHistory.length ? "none" : "block";
-            this.unretractBtn.style.display = type;
         }
 
         resetBoard() {
@@ -299,6 +378,110 @@
             this.history = setHistory({}, 0, null, null, null, this.boardAx);
         }
     }
-    new GobangDom();
+
+
+    class GoBangCanvas extends Base {
+        constructor(props) {
+            super(props);
+            this.canvas = null;
+            this.type = 'canvas';
+            this.init();
+        }
+
+        drawBoard(context, xCount, yCount) {
+            this.drawcols(context, yCount);
+            this.drawrows(context, xCount, yCount)
+        }
+
+        drawcols(context, yCount) {
+            context.save();
+            context.beginPath();
+            for (let i = 1; i < yCount; i++) {
+                context.moveTo(0, 50 * i);
+                context.lineTo(50 * yCount, 50 * i);
+            }
+            context.lineWidth = 1;
+            context.stroke();
+            context.restore();
+        }
+
+        drawrows(context, xCount, yCount) {
+            context.save();
+            context.beginPath();
+            for (let i = 1; i < xCount; i++) {
+                context.moveTo(50 * i, 0);
+                context.lineTo(50 * i, yCount * 50);
+            }
+            context.lineWidth = 1;
+            context.stroke();
+            context.restore();
+        }
+
+        drawChess(context, xCount, yCount, player, ax, his) {
+            if (ax[yCount][xCount] && his) {
+                return;
+            }
+            let left = 50 * xCount;
+            let top = 50 * yCount;
+            let color = player === 1 ? "black" : "white";
+            context.save();
+            context.beginPath();
+            context.arc(left, top, 15, 0, 2 * Math.PI, false);
+            context.fillStyle = color;
+            context.fill();
+            context.restore();
+            if (his) {
+                this.setStep(xCount, yCount);
+            }
+        }
+
+
+        createCanvas(width, height) {
+            let canvas = document.createElement('canvas');
+            canvas.height = height;
+            canvas.width = width;
+            return canvas;
+        }
+
+        init() {
+            this.resetBoard();
+            this.bindEvent();
+        }
+
+        resetBoard() {
+            if (!this.canvas) {
+                this.canvas = this.createCanvas(this.boardWidth, this.boardHeight);
+            } else {
+                this.context.clearRect(0, 0, this.boardWidth, this.boardHeight);
+            }
+            this.boardAx = createBoardAx(this.boardWidth);
+            this.chessboard.appendChild(this.canvas);
+            this.context = this.canvas.getContext("2d");
+            this.player = 1; //黑:1 白:2
+            this.playing = false;
+            this.history = setHistory({}, 0, null, null, null, this.boardAx);
+            this.drawBoard(this.context, this.boardWidth / 50, this.boardHeight / 50);
+        }
+    }
+
+    let goBang = null;
+    let switchCanvas = document.querySelector("#switch-canvas");
+    let switchDom = document.querySelector("#switch-dom");
+
+    goBang = new GobangDom();
+
+    switchCanvas.addEventListener('click', function () {
+        goBang.destory();
+        goBang = new GoBangCanvas();
+        switchCanvas.style.display = 'none';
+        switchDom.style.display = 'block';
+    }, false);
+    switchDom.addEventListener('click', function () {
+        goBang.destory();
+        goBang = new GobangDom();
+        switchCanvas.style.display = 'block';
+        switchDom.style.display = 'none';
+    }, false);
+
 </script>
 </html>
