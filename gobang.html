@@ -17,6 +17,7 @@
             margin: 0 auto;
             position: relative;
             margin-top: 50px;
+            background-color: sandybrown;
         }
 
         .row {
@@ -43,55 +44,37 @@
         .row:last-of-type {
             border-bottom: none;
         }
+
+        .retract-btn {
+            display: none;
+        }
+
+        .unretract-btn {
+            display: none;
+        }
     </style>
 </head>
 <body>
 <div class="outer">
     <div class="chessboard" id="chessboard"></div>
+    <div class="btn-region">
+        <a href="javascript:;" class="retract-btn" id="retract-btn">悔棋</a>
+        <a href="javascript:;" class="unretract-btn" id="unretract-btn">撤销悔棋</a>
+    </div>
 </div>
 </body>
 <script>
-    const chessboard = document.querySelector("#chessboard");
-    const boardHeight = 500;
-    const boardWidth = 500;
-    const offsetLeft = chessboard.offsetLeft;
-    const offsetTop = chessboard.offsetTop;
-    const boardAx = createBoardAx();
-    const chessStyle = {
-        height: "30px",
-        width: "30px",
-        'border-radius': '15px',
-        'background-color': 'black',
-        'position': 'absolute'
-    };
-    let obj = {
-        x: [],
-        y: []
-    };
-
-    function createBoardAx() {
-        let arr = [];
-        for(let i = 0, len = boardWidth / 50; i <= len; i++){
-            arr.push([]);
-            for(let j = 0, jlen = boardWidth / 50; j <= jlen; j++){
-                arr[i].push(0);
-            }
-        }
-        return arr;
-    }
-
-
-    function drawBoard() {
+    function drawBoard(boardHeight, boardWidth, boardAx) {
         let rowCount = boardHeight / 50;
         let _ul = "<ul class='chessbox'>";
         for (let i = 0; i < rowCount; i++) {
-            _ul += '<li class="row">' + drawCell(boardAx[i]) + '</li>';
+            _ul += '<li class="row">' + drawCell(boardWidth, boardAx[i]) + '</li>';
         }
         _ul += '</ul>';
-        chessboard.innerHTML = _ul;
+        return _ul;
     }
 
-    function drawCell(arr) {
+    function drawCell(boardWidth, arr) {
         let _html = "";
         let cellCount = boardWidth / 50;
         for (let i = 0; i < cellCount; i++) {
@@ -100,59 +83,222 @@
         return _html;
     }
 
-    function drawChess(x, y) {
-        let chess = document.createElement('div');
-        for (let key in chessStyle) {
-            chess.style[key] = chessStyle[key];
+    function createBoardAx(boardWidth) {
+        let arr = [];
+        for (let i = 0, len = boardWidth / 50; i <= len; i++) {
+            arr.push([]);
+            for (let j = 0, jlen = boardWidth / 50; j <= jlen; j++) {
+                arr[i].push(0);
+            }
         }
-        let xCount = Math.round(x / 50);
-        let yCount = Math.round(y / 50);
-
-        if (boardAx[yCount][xCount]) {
-            return;
-        }
-        boardAx[yCount][xCount] = 1;
-        obj.x.push(xCount);
-        obj.y.push(yCount);
-        let left = 50 * xCount - parseInt(chessStyle.width, 10) / 2;
-        let top = 50 * yCount - parseInt(chessStyle.height, 10) / 2;
-        chess.style.top = top + "px";
-        chess.style.left = left + "px";
-        chessboard.appendChild(chess);
-        isWin({
-            x: xCount,
-            y: yCount
-        });
+        return arr;
     }
 
-    function isWin(o) {
+    function setHistory(history, step, player, x, y, ax) {
+        let obj = {};
+        if (typeof step === 'number') {
+            obj[step] = {};
+        } else {
+            return;
+        }
+        if (typeof y === 'number') obj[step].y = y;
+        if (typeof player === 'number') obj[step].player = player;
+        if (typeof x === 'number') obj[step].x = x;
+        if (Object.prototype.toString.call(ax) === '[object Array]') {
+            obj[step].ax = [];
+            obj[step].ax = ax.map(function (arr) {
+                return arr.slice();
+            });
+        }
+        return Object.assign({}, history, obj);
+    }
+
+    function drawChessHtml(styles, xCount, yCount, player){
+        let chess = document.createElement('div');
+        let color = {
+            "background-color": player === 1 ? "black" : "white"
+        };
+        let style = Object.assign({}, styles, color);
+        for (let key in style) {
+            chess.style[key] = style[key];
+        }
+        let left = 50 * xCount - parseInt(styles.width, 10) / 2;
+        let top = 50 * yCount - parseInt(styles.height, 10) / 2;
+        chess.style.top = top + "px";
+        chess.style.left = left + "px";
+        chess.setAttribute("id", `item${player}${xCount}${yCount}`);
+        return chess;
+    }
+
+    function checkWin(o, boardAx) {
         let xLine = boardAx[o.y];
-        let yLine = boardAx.map(function(arr){
+        let yLine = boardAx.map(function (arr) {
             return arr[o.x];
         });
         let leftLine = [];
         let rightLine = [];
-        boardAx.map(function (arr, index) {
+        let arrs = [];
+        let succCount = 0;
+        this.boardAx.map(function (arr, index) {
             let leftItem = arr[o.x - (o.y - index)];
             let rightItem = arr[o.x + (o.y - index)]
-            if (typeof leftItem !== 'undefined'){
+            if (typeof leftItem !== 'undefined') {
                 leftLine.push(leftItem);
             }
-            if (typeof rightItem !== 'undefined'){
+            if (typeof rightItem !== 'undefined') {
                 rightLine.push(rightItem)
             }
-
-
         });
-        console.log(rightLine)
+        arrs.push(xLine, yLine, leftLine, rightLine);
+        arrs.map(function (arr) {
+            arr.forEach(function (pos, inx) {
+                if (pos !== 0
+                    && arr[inx - 2] === arr[inx - 1]
+                    && arr[inx - 1] === arr[inx]
+                    && arr[inx] === arr[inx + 1]
+                    && arr[inx + 1] === arr[inx + 2]) {
+                    succCount++;
+                }
+            });
+        });
+        return succCount;
     }
 
-    chessboard.addEventListener('click', function (e) {
-        let x = e.clientX;
-        let y = e.clientY;
-        drawChess(x - offsetLeft, y - offsetTop);
-    }, false);
+    function setPlayer(role) {
+        return role === 2 ? 1 : 2;
+    }
 
-    drawBoard();
+    class GobangDom {
+        constructor() {
+            this.chessboard = document.querySelector("#chessboard");
+            this.retractBtn = document.querySelector("#retract-btn");
+            this.unretractBtn = document.querySelector("#unretract-btn");
+            this.boardHeight = 500;
+            this.boardWidth = 500;
+            this.offsetLeft = this.chessboard.offsetLeft;
+            this.offsetTop = this.chessboard.offsetTop;
+            this.chessStyle = {
+                height: "30px",
+                width: "30px",
+                'border-radius': '15px',
+                'position': 'absolute'
+            };
+            this.boardAx = null;
+            this.currentStep = 0;
+            this.retractHistory = [];
+            this.init();
+        }
+
+        init(){
+            this.resetBoard();
+            this.bindEvent();
+        }
+
+        bindEvent() {
+            this.unretractBtn.addEventListener('click', (e) => {
+                let hisStep = 0;
+                let nextData = {};
+                if (!this.retractHistory.length) {
+                    return;
+                }
+                hisStep = this.retractHistory.splice(this.retractHistory.length - 1, this.retractHistory.length);
+                nextData = this.history[hisStep];
+                this.boardAx = [];
+                this.boardAx = nextData.ax.map(function (arr) {
+                    return arr.slice();
+                });
+                this.drawChess(nextData.x, nextData.y, nextData.player);
+                this.currentStep = hisStep;
+                this.player = setPlayer(nextData.player);
+                this.toggleunretract();
+            });
+
+            this.retractBtn.addEventListener('click', (e) => {
+                let lastData = {};
+                let currentData = {};
+                let target = null;
+                if (!this.currentStep) {
+                    return;
+                }
+                this.retractHistory.push(this.currentStep);
+                currentData = this.history[this.currentStep];
+                this.currentStep--;
+                lastData = this.history[this.currentStep];
+                this.boardAx = [];
+                this.boardAx = lastData.ax.map(function (arr) {
+                    return arr.slice();
+                });
+                target = document.querySelector("#item" + currentData.player + currentData.x + currentData.y);
+                target.parentNode.removeChild(target);
+                this.player = setPlayer(this.player);
+                this.toggleunretract();
+            }, false);
+
+            this.chessboard.addEventListener('click', (e) => {
+                let x = e.clientX;
+                let y = e.clientY;
+                let xCount = Math.round((x - this.offsetLeft) / 50);
+                let yCount = Math.round((y - this.offsetTop) / 50);
+                if (!this.playing) {
+                    this.playing = true;
+                    this.drawChess(xCount, yCount, this.player, true);
+                }
+            }, false);
+        }
+
+        setStep(xCount, yCount) {
+            this.boardAx[yCount][xCount] = this.player;
+            this.currentStep++;
+            this.toggleRetract(this.currentStep);
+            this.history = setHistory(this.history, this.currentStep, this.player, xCount, yCount, this.boardAx);
+            setTimeout(() => {
+                this.isWin({
+                    x: xCount,
+                    y: yCount
+                });
+            }, 100);
+        }
+
+        drawChess(xCount, yCount, his) {
+            if (this.boardAx[yCount][xCount] && his) {
+                return;
+            }
+            this.chessboard.appendChild(drawChessHtml(this.chessStyle, xCount, yCount, this.player));
+            if (his) {
+                this.setStep(xCount, yCount);
+            }
+
+        }
+
+        isWin(o) {
+            let succCount = checkWin(o, this.boardAx);
+            this.playing = false;
+            if (succCount) {
+                alert("恭喜" + this.player === 2 ? "白方" : "黑方" + "获胜");
+                this.resetBoard();
+                return;
+            }
+            this.player = setPlayer(this.player);
+        }
+
+        toggleRetract(step) {
+            let type = !step ? "none" : "block";
+            this.retractBtn.style.display = type;
+        }
+
+        toggleunretract() {
+            let type = !this.retractHistory.length ? "none" : "block";
+            this.unretractBtn.style.display = type;
+        }
+
+        resetBoard() {
+            this.boardAx = createBoardAx(this.boardWidth);
+            this.chessboard.innerHTML = drawBoard(this.boardHeight, this.boardWidth, this.boardAx);
+            this.player = 1; //黑:1 白:2
+            this.playing = false;
+            this.history = setHistory({}, 0, null, null, null, this.boardAx);
+        }
+    }
+    new GobangDom();
 </script>
 </html>
