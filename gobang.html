@@ -139,7 +139,7 @@
         let rightLine = [];
         let arrs = [];
         let succCount = 0;
-        this.boardAx.map(function (arr, index) {
+        boardAx.map(function (arr, index) {
             let leftItem = arr[o.x - (o.y - index)];
             let rightItem = arr[o.x + (o.y - index)]
             if (typeof leftItem !== 'undefined') {
@@ -201,8 +201,8 @@
                 if (!this.retractHistory.length) {
                     return;
                 }
-                hisStep = this.retractHistory.splice(this.retractHistory.length - 1, this.retractHistory.length);
-                nextData = this.history[hisStep];
+                hisStep = this.retractHistory.splice(this.retractHistory.length - 1, 1);
+                nextData = this.history[hisStep[0]];
                 this.boardAx = [];
                 this.boardAx = nextData.ax.map(function (arr) {
                     return arr.slice();
@@ -259,11 +259,11 @@
             }, 100);
         }
 
-        drawChess(xCount, yCount, his) {
+        drawChess(xCount, yCount, player, his) {
             if (this.boardAx[yCount][xCount] && his) {
                 return;
             }
-            this.chessboard.appendChild(drawChessHtml(this.chessStyle, xCount, yCount, this.player));
+            this.chessboard.appendChild(drawChessHtml(this.chessStyle, xCount, yCount, player));
             if (his) {
                 this.setStep(xCount, yCount);
             }
