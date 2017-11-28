@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>javaScript列表</title>
+    <title>GoBang</title>
     <meta id="meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
     <style>
         * {
@@ -81,6 +81,17 @@
 </div>
 </body>
 <script>
+    const switchCanvas = document.querySelector("#switch-canvas");
+    const switchDom = document.querySelector("#switch-dom");
+    const chessboard = document.querySelector("#chessboard");
+    const retractBtn = document.querySelector("#retract-btn");
+    const unretractBtn = document.querySelector("#unretract-btn");
+    const offsetLeft = chessboard.offsetLeft;
+    const offsetTop = chessboard.offsetTop;
+
+    let goBang = null;
+    
+    
     function drawBoard(boardHeight, boardWidth, boardAx) {
         let rowCount = boardHeight / 50;
         let _ul = "<ul class='chessbox'>";
@@ -184,16 +195,41 @@
     function setPlayer(role) {
         return role === 2 ? 1 : 2;
     }
+    
+    function toggleRetract(type){
+        retractBtn.style.display = type;
+    }
+    
+    function toggleunretract(type) {
+        unretractBtn.style.display = type;
+    }
+    
+    function resetBoard() {
+        chessboard.innerHTML = "";
+        resetretractBtn();
+    }
+    
+    function resetretractBtn() {
+        retractBtn.style.display = 'none';
+        unretractBtn.style.display = 'none';
+    }
+    
+    function boardAppendChild(child) {
+        chessboard.appendChild(child);
+    }
+    
+    function removeTarget(target) {
+        target.parentNode.removeChild(target);
+    }
+    
+    function setBoardHtml(html) {
+        chessboard.innerHTML = html;
+    }
 
     class Base {
         constructor() {
-            this.chessboard = document.querySelector("#chessboard");
-            this.retractBtn = document.querySelector("#retract-btn");
-            this.unretractBtn = document.querySelector("#unretract-btn");
             this.boardHeight = 500;
             this.boardWidth = 500;
-            this.offsetLeft = this.chessboard.offsetLeft;
-            this.offsetTop = this.chessboard.offsetTop;
             this.currentStep = 0;
             this.retractHistory = [];
             this.type = '';
@@ -214,7 +250,7 @@
 
         toggleRetract(step) {
             let type = !step ? "none" : "block";
-            this.retractBtn.style.display = type;
+            toggleRetract(type)
         }
 
         isWin(o) {
@@ -230,29 +266,26 @@
 
         toggleunretract() {
             let type = !this.retractHistory.length ? "none" : "block";
-            this.unretractBtn.style.display = type;
-        }
-
-        bindEvent() {
-            this.chessboard.addEventListener('click', this.clickFun.bind(this), false);
-            this.unretractBtn.addEventListener('click', this.unretract.bind(this), false);
-
-            this.retractBtn.addEventListener('click', this.retract.bind(this), false);
+            toggleunretract(type);
         }
 
         clickFun(e) {
             let x = e.clientX;
             let y = e.clientY;
-            let xCount = Math.round((x - this.offsetLeft) / 50);
-            let yCount = Math.round((y - this.offsetTop) / 50);
+            let xCount = Math.round((x - offsetLeft) / 50);
+            let yCount = Math.round((y - offsetTop) / 50);
+            
             if (!this.playing) {
                 this.playing = true;
+                if (this.retractHistory.length){
+                    this.retractHistory = [];
+                    resetretractBtn();
+                }
                 if (this.type === 'canvas') {
                     this.drawChess(this.context, xCount, yCount, this.player, this.boardAx, true);
                 } else {
                     this.drawChess(xCount, yCount, this.player, true);
                 }
-
             }
         }
 
@@ -317,14 +350,14 @@
                     return arr.slice();
                 });
                 target = document.querySelector("#item" + currentData.player + currentData.x + currentData.y);
-                target.parentNode.removeChild(target);
+                removeTarget(target);
             }
             this.player = setPlayer(this.player);
             this.toggleunretract();
         }
-
+        
         destory() {
-            this.chessboard.innerHTML = "";
+            resetBoard();
         }
     }
 
@@ -344,7 +377,6 @@
 
         init() {
             this.resetBoard();
-            this.bindEvent();
         }
 
         setStep(xCount, yCount) {
@@ -364,7 +396,7 @@
             if (this.boardAx[yCount][xCount] && his) {
                 return;
             }
-            this.chessboard.appendChild(drawChessHtml(this.chessStyle, xCount, yCount, player));
+            boardAppendChild(drawChessHtml(this.chessStyle, xCount, yCount, player))
             if (his) {
                 this.setStep(xCount, yCount);
             }
@@ -372,7 +404,7 @@
 
         resetBoard() {
             this.boardAx = createBoardAx(this.boardWidth);
-            this.chessboard.innerHTML = drawBoard(this.boardHeight, this.boardWidth, this.boardAx);
+            setBoardHtml(drawBoard(this.boardHeight, this.boardWidth, this.boardAx));
             this.player = 1; //黑:1 白:2
             this.playing = false;
             this.history = setHistory({}, 0, null, null, null, this.boardAx);
@@ -397,11 +429,13 @@
             context.save();
             context.beginPath();
             for (let i = 1; i < yCount; i++) {
-                context.moveTo(0, 50 * i);
-                context.lineTo(50 * yCount, 50 * i);
+                context.moveTo(0, 50 * i + 0.5);
+                context.lineTo(50 * yCount, 50 * i + 0.5);
             }
             context.lineWidth = 1;
+            
             context.stroke();
+            context.strokeStyle = 'black';
             context.restore();
         }
 
@@ -409,9 +443,10 @@
             context.save();
             context.beginPath();
             for (let i = 1; i < xCount; i++) {
-                context.moveTo(50 * i, 0);
-                context.lineTo(50 * i, yCount * 50);
+                context.moveTo(50 * i + 0.5, 0);
+                context.lineTo(50* i + 0.5, yCount * 50);
             }
+            context.strokeStyle = 'black';
             context.lineWidth = 1;
             context.stroke();
             context.restore();
@@ -423,7 +458,7 @@
             }
             let left = 50 * xCount;
             let top = 50 * yCount;
-            let color = player === 1 ? "black" : "white";
+            let color = (player === 1) ? "black" : "white";
             context.save();
             context.beginPath();
             context.arc(left, top, 15, 0, 2 * Math.PI, false);
@@ -445,7 +480,6 @@
 
         init() {
             this.resetBoard();
-            this.bindEvent();
         }
 
         resetBoard() {
@@ -455,18 +489,15 @@
                 this.context.clearRect(0, 0, this.boardWidth, this.boardHeight);
             }
             this.boardAx = createBoardAx(this.boardWidth);
-            this.chessboard.appendChild(this.canvas);
+            boardAppendChild(this.canvas);
             this.context = this.canvas.getContext("2d");
             this.player = 1; //黑:1 白:2
             this.playing = false;
             this.history = setHistory({}, 0, null, null, null, this.boardAx);
             this.drawBoard(this.context, this.boardWidth / 50, this.boardHeight / 50);
         }
+        
     }
-
-    let goBang = null;
-    let switchCanvas = document.querySelector("#switch-canvas");
-    let switchDom = document.querySelector("#switch-dom");
 
     goBang = new GobangDom();
 
@@ -481,6 +512,16 @@
         goBang = new GobangDom();
         switchCanvas.style.display = 'block';
         switchDom.style.display = 'none';
+    }, false);
+
+    chessboard.addEventListener('click', function (e) {
+        goBang.clickFun(e)
+    }, false);
+    unretractBtn.addEventListener('click', function (e) {
+        goBang.unretract(e);
+    }, false);
+    retractBtn.addEventListener('click', function (e) {
+        goBang.retract(e);
     }, false);
 
 </script>
